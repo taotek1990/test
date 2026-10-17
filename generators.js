@@ -60,6 +60,26 @@
     return base + (10 - (weightedSum(base, PESEL_WEIGHTS) % 10)) % 10;
   }
 
+  // Walidacja PESEL. Zwraca { valid: false, error } albo { valid: true, birthDate, sex }.
+  function parsePesel(input) {
+    const s = String(input).replace(/\s/g, '');
+    if (!/^\d{11}$/.test(s)) return { valid: false, error: 'PESEL musi składać się z 11 cyfr.' };
+    if ((10 - (weightedSum(s, PESEL_WEIGHTS) % 10)) % 10 !== Number(s[10])) {
+      return { valid: false, error: 'Nieprawidłowa cyfra kontrolna.' };
+    }
+
+    // Miesiąc 01–12 → 1900, 21–32 → 2000, 41–52 → 2100, 61–72 → 2200, 81–92 → 1800.
+    const mm = Number(s.slice(2, 4));
+    const month = mm % 20;
+    const year = [19, 20, 21, 22, 18][Math.floor(mm / 20)] * 100 + Number(s.slice(0, 2));
+    const day = Number(s.slice(4, 6));
+    const birthDate = new Date(Date.UTC(year, month - 1, day));
+    if (month < 1 || month > 12 || birthDate.getUTCMonth() !== month - 1 || birthDate.getUTCDate() !== day) {
+      return { valid: false, error: 'Nieprawidłowa data urodzenia.' };
+    }
+    return { valid: true, birthDate, sex: Number(s[9]) % 2 ? 'M' : 'K' };
+  }
+
   // NPWZ lekarza: 7 cyfr, pierwsza to cyfra kontrolna = (1*c2 + 2*c3 + ... + 6*c7) mod 11.
   // Numery z wynikiem 0 lub 10 nie są nadawane.
   function npwz() {
@@ -131,7 +151,7 @@
     return `${local}${suffix}@${d}`;
   }
 
-  const api = { pesel, npwz, regon9, regon14, nip, email };
+  const api = { pesel, parsePesel, npwz, regon9, regon14, nip, email };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Generators = api;
 })(this);

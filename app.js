@@ -84,5 +84,62 @@
     copyText(all, e.currentTarget);
   });
 
+  function ageOn(birth, today) {
+    let age = today.getFullYear() - birth.getUTCFullYear();
+    const m = today.getMonth() - birth.getUTCMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getUTCDate())) age--;
+    return age;
+  }
+
+  function yearsLabel(n) {
+    if (n === 1) return '1 rok';
+    const last = n % 10;
+    const lastTwo = n % 100;
+    return `${n} ${last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14) ? 'lata' : 'lat'}`;
+  }
+
+  function showPeselResult() {
+    const box = $('#pesel-result');
+    const value = $('#pesel-check').value.replace(/\s/g, '');
+    box.replaceChildren();
+    box.className = '';
+    if (!value) return;
+
+    if (/^\d{0,10}$/.test(value)) {
+      box.className = 'muted';
+      box.textContent = `Wpisz 11 cyfr (${value.length}/11).`;
+      return;
+    }
+
+    const result = G.parsePesel(value);
+    const age = result.valid ? ageOn(result.birthDate, new Date()) : 0;
+    if (!result.valid || age < 0) {
+      box.className = 'error';
+      box.textContent = `✗ ${result.valid ? 'Data urodzenia jest w przyszłości.' : result.error}`;
+      return;
+    }
+
+    const d = result.birthDate;
+    const date = [d.getUTCDate(), d.getUTCMonth() + 1].map((n) => String(n).padStart(2, '0')).join('.') + '.' + d.getUTCFullYear();
+    const status = document.createElement('p');
+    status.className = 'ok';
+    status.textContent = '✓ Poprawny numer PESEL';
+    const dl = document.createElement('dl');
+    for (const [term, desc] of [
+      ['Data urodzenia', date],
+      ['Wiek', yearsLabel(age)],
+      ['Płeć', result.sex === 'K' ? 'kobieta' : 'mężczyzna'],
+    ]) {
+      const dt = document.createElement('dt');
+      dt.textContent = term;
+      const dd = document.createElement('dd');
+      dd.textContent = desc;
+      dl.append(dt, dd);
+    }
+    box.append(status, dl);
+  }
+
+  $('#pesel-check').addEventListener('input', showPeselResult);
+
   selectType(current);
 })();
